@@ -1,4 +1,5 @@
 #include "OpenKNX/Facade.h"
+#include "ModuleVersionCheck.h"
 
 extern void setup1() __attribute__((weak));
 
@@ -62,13 +63,8 @@ namespace OpenKNX
 
     void Facade::addModule(uint8_t id, Module &module)
     {
-        addModule(id, &module);
-    }
-
-    void Facade::addModule(uint8_t id, Module *module)
-    {
         modules.count++;
-        modules.list[modules.count - 1] = module;
+        modules.list[modules.count - 1] = &module;
         modules.ids[modules.count - 1] = id;
 #ifdef OPENKNX_RUNTIME_STAT
         modules.runtime[modules.count - 1] = Stat::RuntimeStat();

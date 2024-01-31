@@ -37,11 +37,13 @@ namespace OpenKNX
 
     void Hardware::initButtons()
     {
+#ifdef PROG_BUTTON_PIN
         pinMode(PROG_BUTTON_PIN, INPUT_PULLUP);
         attachInterrupt(
             digitalPinToInterrupt(PROG_BUTTON_PIN),
             []() -> void { openknx.progButton.change(!digitalRead(PROG_BUTTON_PIN)); },
             CHANGE);
+#endif
 
 #ifdef FUNC1_BUTTON_PIN
         pinMode(FUNC1_BUTTON_PIN, INPUT_PULLUP);
@@ -251,8 +253,8 @@ namespace OpenKNX
 
         while (true)
         {
-#ifdef WATCHDOG
-            Watchdog.reset();
+#ifdef OPENKNX_WATCHDOG
+            openknx.watchdog.deactivate();
 #endif
             delay(2000);
             // Repeat error message

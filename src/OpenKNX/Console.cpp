@@ -104,7 +104,7 @@ namespace OpenKNX
         {
             openknx.common.triggerSavePin();
         }
-        else if (cmd == "s" || cmd == "w" || cmd == "save")
+        else if (!diagnoseKo && (cmd == "s" || cmd == "w" || cmd == "save"))
         {
             openknx.flash.save();
         }
@@ -122,6 +122,18 @@ namespace OpenKNX
             uint32_t addr = std::stoi(addrstr, nullptr, 16);
             showMemoryContent((uint8_t*)addr, 0x40);
         }
+#ifndef ARDUINO_ARCH_SAMD
+        else if ((!diagnoseKo && (cmd.compare(0, 3, "dw ") == 0 || cmd.compare(0, 3, "aw ") == 0)) ||
+                 (cmd.compare(0, 3, "dr ") == 0 || cmd.compare(0, 3, "ar ") == 0))
+        {
+            processPinCommand(cmd);
+        }
+        else if (!diagnoseKo && (cmd.rfind("dwon ", 0) == 0 || cmd.rfind("dwoff ", 0) == 0))
+        {
+            processPinCommand("dw " + cmd.substr(((cmd.rfind("dwon ", 0) == 0) ? 5 : 6)) + (cmd.rfind("dwon ", 0) == 0 ? " 1" : " 0"));
+        }
+#endif
+
 #ifdef OPENKNX_RUNTIME_STAT
         else if (!diagnoseKo && (cmd == "runtime"))
         {
@@ -190,6 +202,18 @@ namespace OpenKNX
     void Console::processSerialInput()
     {
         const uint8_t current = OPENKNX_LOGGER_DEVICE.read();
+
+        // Magic byte for save data during firmware upgrade
+        if (current == 0x7)
+        {
+            OPENKNX_LOGGER_DEVICE.write(0x7);
+            openknx.progLed.forceOn();
+            openknx.flash.save(true);
+            OPENKNX_LOGGER_DEVICE.write(0x7);
+            delay(10000);
+            openknx.restart();
+        }
+
         if (current == '\r' || current == '\n')
         {
             if (_consoleCharLast == '\r' && current == '\n')
@@ -373,13 +397,23 @@ namespace OpenKNX
         printHelpLine("sleep", "Sleep for up to 20 seconds");
         printHelpLine("fatal", "Trigger a FatalError");
         printHelpLine("powerloss", "Trigger a PowerLoss (SavePin)");
+#ifdef OPENKNX_WATCHDOG
         printHelpLine("watchdog", "Show restart count by watchdog");
+#endif
 #ifdef ARDUINO_ARCH_RP2040
         printHelpLine("erase knx", "Erase knx parameters");
         printHelpLine("erase openknx", "Erase openknx module data");
         printHelpLine("erase files", "Erase filesystem");
         printHelpLine("erase all", "Erase all");
         printHelpLine("bootloader", "Reset into Bootloader Mode");
+#endif
+#ifndef ARDUINO_ARCH_SAMD
+        printHelpLine("dwon <pin>", "Write digital pin to HIGH");
+        printHelpLine("dwoff <pin>", "Write digital pin to LOW");
+        printHelpLine("dw <pin> 0-1", "Write digital pin");
+        printHelpLine("dr <pin>", "Read digial pin");
+        printHelpLine("aw <pin> 0-4096", "Write analog pin");
+        printHelpLine("ar <pin>", "Read analog pin");
 #endif
         for (uint8_t i = 0; i < openknx.modules.count; i++)
             openknx.modules.list[i]->showHelp();
@@ -543,6 +577,41 @@ namespace OpenKNX
     void Console::resetToBootloader()
     {
         reset_usb_boot(0, 0);
+    }
+#endif // ARDUINO_ARCH_RP2040
+
+#ifndef ARDUINO_ARCH_SAMD
+    void Console::processPinCommand(const std::string& cmd)
+    {
+        if (auto _pos = cmd.find(' '); _pos != std::string::npos)
+        {
+            pin_size_t pin = std::stoi(cmd.substr(_pos + 1));
+            if (cmd.compare(0, 2, "dw") == 0 || cmd.compare(0, 2, "aw") == 0)
+            {
+                if (auto __pos = cmd.find(' ', _pos + 1); __pos != std::string::npos)
+                {
+                    int value = std::stoi(cmd.substr(__pos + 1));
+                    if (cmd.compare(0, 2, "dw") == 0 && value <= HIGH)
+                    {
+                        digitalWrite(pin, value);
+                        openknx.logger.logWithPrefixAndValues("PinCommand", "Write pin %i to %i", pin, value);
+                    }
+                    else if (cmd.compare(0, 2, "aw") == 0 && value <= 4095)
+                    {
+                        analogWrite(pin, value);
+                        openknx.logger.logWithPrefixAndValues("PinCommand", "Write pin %i to %i", pin, value);
+                    }
+                }
+            }
+            else if (cmd.compare(0, 2, "dr") == 0)
+            {
+                openknx.logger.logWithPrefixAndValues("PinCommand", "Read pin %i: %i", pin, digitalRead(pin));
+            }
+            else if (cmd.compare(0, 2, "ar") == 0)
+            {
+                openknx.logger.logWithPrefixAndValues("PinCommand", "Read pin %i: %i", pin, analogRead(pin));
+            }
+        }
     }
 #endif
 } // namespace OpenKNX

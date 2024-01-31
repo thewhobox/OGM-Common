@@ -26,9 +26,9 @@ ParamLOG_HeartbeatDelayTimeMS
 
 | ARCH   | info                                                                    |
 | ------ | ----------------------------------------------------------------------- |
-| RP204  | the reference platform with full support (including dual core support)  |
+| RP2040 | the reference platform with full support (including dual core support)  |
 | SAMD21 | obsolete but still supported. no hw should be developed on this anymore |
-| ESP32  | experimental (single core only)                                         |
+| ESP32  | experimental                                                            |
 
 To configure the Hardware-Setup use the following defines in hardware.h
 
@@ -46,7 +46,7 @@ KNX_UART_TX_PIN
 
 | define                            |     default | unit  | function                                                                                                                                                                                   |
 | --------------------------------- | ----------: | :---: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| OPENKNX_RECOVERY_TIME             |        6000 |  ms   | hold prog button to erase knx and openknx data (not firmware or filesystem). Turn off with 0                                                                                                                |
+| OPENKNX_RECOVERY_TIME             |        6000 |  ms   | hold prog button to erase knx and openknx data (not firmware or filesystem). Turn off with 0                                                                                               |
 | OPENKNX_DUALCORE                  |             |       | build with dualcore support (only on RP2040)                                                                                                                                               |
 | OPENKNX_WATCHDOG                  |             |       | compile with watchdog (use only for releases. debugger not working with active watchdog)                                                                                                   |
 | OPENKNX_WATCHDOG_MAX_PERIOD       |       16384 |  ms   | the timeout period of watchdog                                                                                                                                                             |
